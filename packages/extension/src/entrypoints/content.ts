@@ -13,26 +13,32 @@ export default defineContentScript({
 		initPageController()
 
 		// if auth token matches, expose agent to page
-		chrome.storage.local.get('PageAgentExtUserAuthToken').then((result) => {
-			// extension side token.
-			// @note this is isolated world. it is safe to assume user script cannot access it
-			const extToken = result.PageAgentExtUserAuthToken
-			if (!extToken) return
+		// (catch: context may be invalidated before this resolves, e.g. after a reload)
+		chrome.storage.local
+			.get('PageAgentExtUserAuthToken')
+			.then((result) => {
+				// extension side token.
+				// @note this is isolated world. it is safe to assume user script cannot access it
+				const extToken = result.PageAgentExtUserAuthToken
+				if (!extToken) return
 
-			// page side token
-			const pageToken = localStorage.getItem('PageAgentExtUserAuthToken')
-			if (!pageToken) return
+				// page side token
+				const pageToken = localStorage.getItem('PageAgentExtUserAuthToken')
+				if (!pageToken) return
 
-			if (pageToken !== extToken) return
+				if (pageToken !== extToken) return
 
-			console.log('[PageAgentExt]: Auth tokens match. Exposing agent to page.')
+				console.log('[PageAgentExt]: Auth tokens match. Exposing agent to page.')
 
-			// add isolated world script
-			exposeAgentToPage().then(
-				// add main-world script
-				() => injectScript('/main-world.js')
-			)
-		})
+				// add isolated world script
+				exposeAgentToPage().then(
+					// add main-world script
+					() => injectScript('/main-world.js')
+				)
+			})
+			.catch((error) => {
+				console.debug(`${DEBUG_PREFIX} page-mode setup skipped:`, error)
+			})
 	},
 })
 
