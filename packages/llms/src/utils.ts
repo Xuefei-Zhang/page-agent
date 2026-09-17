@@ -52,9 +52,22 @@ export function modelPatch(body: Record<string, any>, baseURL?: string) {
 			debug('Patch Qwen3.8-max on OpenRouter: reasoning_effort=low, remove tool_choice')
 			body.reasoning_effort = 'low'
 			delete body.tool_choice
-		} else {
-			debug('Patch Qwen: disable thinking')
+		} else if (provider === 'dashscope') {
+			// DashScope accepts a top-level enable_thinking flag.
+			debug('Patch Qwen (DashScope): disable thinking')
 			body.enable_thinking = false
+		} else {
+			// Self-hosted / 3rd-party OpenAI-compatible servers (vLLM, SGLang, Ollama, ...):
+			// the top-level flag is silently ignored there; the chat template only honors
+			// chat_template_kwargs.enable_thinking. Thinking tokens then swallow the
+			// tool_calls (finish_reason=tool_calls with an empty tool_calls array).
+			// vLLM (and similar servers) also fail to parse an explicit tool_choice.
+			debug('Patch Qwen (self-hosted): disable thinking via chat_template_kwargs, remove tool_choice')
+			body.chat_template_kwargs = {
+				...body.chat_template_kwargs,
+				enable_thinking: false,
+			}
+			delete body.tool_choice
 		}
 		if (body.temperature === undefined && !/max|plus/.test(modelName)) {
 			debug('Patch Qwen: raise temperature to 1.0')
@@ -242,12 +255,13 @@ export function normalizeModelName(modelName: string): string {
 	return normalizedName
 }
 
-export function getProvider(baseURL?: string): 'openrouter' | undefined {
+export function getProvider(baseURL?: string): 'openrouter' | 'dashscope' | undefined {
 	if (!baseURL) return undefined
 	try {
 		const url = new URL(baseURL)
 		const hostname = url.hostname
 		if (hostname === 'openrouter.ai') return 'openrouter'
+		if (hostname === 'dashscope.aliyuncs.com' || hostname === 'dashscope-intl.aliyuncs.com') return 'dashscope'
 		return undefined
 	} catch (e) {
 		return undefined
