@@ -56,6 +56,15 @@ export default function App() {
 		}
 	}, [history, activity])
 
+	// Focus the task input when the panel opens, when returning from other views,
+	// and when a running task finishes (the textarea re-enables).
+	const isRunning = status === 'running'
+	useEffect(() => {
+		if (view.name !== 'chat' || isRunning) return
+		const timer = setTimeout(() => textareaRef.current?.focus(), 50)
+		return () => clearTimeout(timer)
+	}, [view.name, isRunning])
+
 	const runTask = useCallback(
 		(task: string) => {
 			const normalizedTask = task.trim()
@@ -128,7 +137,6 @@ export default function App() {
 
 	// --- Chat view ---
 
-	const isRunning = status === 'running'
 	const showEmptyState = !currentTask && history.length === 0 && !isRunning
 
 	return (
