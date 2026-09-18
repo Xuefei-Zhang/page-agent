@@ -53,6 +53,15 @@ export default defineConfig({
 		action: {
 			default_title: '__MSG_extActionTitle__',
 		},
+		commands: {
+			_execute_action: {
+				suggested_key: {
+					default: 'Alt+Shift+P',
+					mac: 'Command+Shift+P',
+				},
+				description: '__MSG_extActionTitle__',
+			},
+		},
 		web_accessible_resources: [
 			{
 				resources: ['main-world.js'],
